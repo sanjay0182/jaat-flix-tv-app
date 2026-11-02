@@ -22,22 +22,31 @@ jobs:
         with:
           gradle-version: 8.7
 
+      # finds the project folder by itself (works if the zip was pushed as a sub-folder too)
+      - name: Find project
+        run: |
+          F=$(find . -name settings.gradle.kts -not -path "*/.git/*" | head -1)
+          if [ -z "$F" ]; then echo "settings.gradle.kts NOT FOUND. Files in the repo:"; ls -R | head -60; exit 1; fi
+          echo "PROJECT_DIR=$(dirname "$F")" >> "$GITHUB_ENV"
+          echo "Project folder: $(dirname "$F")"
+          ls -la "$(dirname "$F")"
+
       - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: gradle -p "$PROJECT_DIR" :app:assembleDebug --no-daemon --console=plain
 
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/*.apk out/JaatPlay-TV.apk
+          cp "$PROJECT_DIR"/app/build/outputs/apk/debug/*.apk out/JaatPlay-TV.apk
           ls -la out
 
-      # 1) download from the run page: Actions -> run -> Artifacts
+      # 1) Actions -> run -> Artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: JaatPlay-TV-apk
           path: out/JaatPlay-TV.apk
 
-      # 2) download from Releases (direct link, easy to open on the TV / phone)
+      # 2) Releases (direct download link)
       - name: Publish to Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
