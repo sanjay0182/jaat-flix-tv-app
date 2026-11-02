@@ -22,6 +22,17 @@ jobs:
         with:
           gradle-version: 8.7
 
+      # if the repo holds only the zip (not the extracted files), it is extracted here first
+      - name: Extract zip if needed
+        run: |
+          if [ -z "$(find . -name settings.gradle.kts -not -path "*/.git/*" | head -1)" ]; then
+            Z=$(find . -maxdepth 2 -name "*.zip" -not -path "*/.git/*" | head -1)
+            if [ -n "$Z" ]; then
+              echo "Extracting $Z"
+              mkdir -p _unzipped && unzip -q -o "$Z" -d _unzipped
+            fi
+          fi
+
       # finds the project folder by itself (works if the zip was pushed as a sub-folder too)
       - name: Find project
         run: |
