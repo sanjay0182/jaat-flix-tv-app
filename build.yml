@@ -1,0 +1,52 @@
+name: Build JaatPlay TV APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # ubuntu-latest already has the Android SDK; this only accepts licences / adds missing parts
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/debug/*.apk out/JaatPlay-TV.apk
+          ls -la out
+
+      # 1) download from the run page: Actions -> run -> Artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JaatPlay-TV-apk
+          path: out/JaatPlay-TV.apk
+
+      # 2) download from Releases (direct link, easy to open on the TV / phone)
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest out/JaatPlay-TV.apk \
+            --title "JaatPlay TV (latest build)" \
+            --notes "Auto build from commit ${GITHUB_SHA::7}" \
+            --target "$GITHUB_SHA"
